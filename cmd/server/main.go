@@ -1,15 +1,66 @@
 package main
 
 import (
-	"fmt"
+	"context"
+	"github.com/fallenezer/Unidash_Goshka/internal/config"
+	"github.com/fallenezer/Unidash_Goshka/internal/handler"
+	_ "github.com/faustez/unidash_goshka/docs"
+	"github.com/go-chi/chi/v5"
+	httpSwagger "github.com/swaggo/http-swagger"
+	"log"
+	"log/slog"
 	"net/http"
+	"os"
+	"os/signal"
 )
 
-func handlers(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Hello World")
+func handlerMain() error {
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
+
+	if err := Run(ctx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func Run(ctx context.Context) error {
+	cfg := config.NewConfig()
+
+	router := chi.NewRouter()
+
+	router.Get("/swagger/*", httpSwagger.Handler(
+		httpSwagger.URL("http://localhost:8080/swagger/doc.json"), // путь к swagger.json
+	))
+	handler.RegisterRoutes(router, handler.Dependencies{
+		AssetsFS: http.Dir(cfg.AssetsDir),
+	})
+
+	server := http.Server{
+		Addr:    cfg.ServerAddr,
+		Handler: router,
+	}
+
+	go func() {
+		<-ctx.Done()
+		slog.Info("shutting down server")
+		err := server.Shutdown(ctx)
+		if err != nil {
+			return
+		}
+	}()
+
+	slog.Info("starting server", slog.String("addr", cfg.ServerAddr))
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		return err
+	}
+
+	return nil
 }
 
 func main() {
-	http.HandleFunc("/", handlers)
-	http.ListenAndServe(":1488", nil)
+	if err := handlerMain(); err != nil {
+		log.Fatal(err)
+	}
 }

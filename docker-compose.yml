@@ -1,0 +1,30 @@
+services:
+  app:
+    container_name: golang
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - db
+    ports:
+      - "${API_PORT}:8088"
+    command: ./server
+
+
+
+  db:
+    container_name: postgres
+    image: postgres:15
+    restart: always
+    ports:
+      - "${DB_PORT}:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+
+volumes:
+  pgdata:
