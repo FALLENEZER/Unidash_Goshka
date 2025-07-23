@@ -4,9 +4,7 @@ import (
 	"context"
 	"github.com/fallenezer/Unidash_Goshka/internal/config"
 	"github.com/fallenezer/Unidash_Goshka/internal/handler"
-	_ "github.com/faustez/unidash_goshka/docs"
 	"github.com/go-chi/chi/v5"
-	httpSwagger "github.com/swaggo/http-swagger"
 	"log"
 	"log/slog"
 	"net/http"
@@ -30,9 +28,7 @@ func Run(ctx context.Context) error {
 
 	router := chi.NewRouter()
 
-	router.Get("/swagger/*", httpSwagger.Handler(
-		httpSwagger.URL("http://localhost:8080/swagger/doc.json"), // путь к swagger.json
-	))
+	router.Handle("/swagger/*", http.StripPrefix("/swagger/", http.FileServer(http.Dir("web/swagger"))))
 	handler.RegisterRoutes(router, handler.Dependencies{
 		AssetsFS: http.Dir(cfg.AssetsDir),
 	})
